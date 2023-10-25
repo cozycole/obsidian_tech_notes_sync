@@ -2,6 +2,8 @@
 
 Notes from https://www.joelonsoftware.com/2003/10/08/the-absolute-minimum-every-software-developer-absolutely-positively-must-know-about-unicode-and-character-sets-no-excuses/
 
+Additional Notes from https://tonsky.me/blog/unicode/
+
 ## Ascii
 
 Ascii is a character set that maps a number between 0 and 127 (7 bits) to english letters, digits punctuation, special characters and control characters.
@@ -107,3 +109,45 @@ So you can always write this without using non-ascii letters:
 ```
 
 It's best the meta tag is the first tag in head because once it figures out the encoding, it restarts from the top using that encoding.
+
+# Back to UTF-8
+
+![image](./images/utf8_tonksy.png)
+
+So ASCII can be encoded normally in UTF-8 since we know all bytes starting with a zero will be a sinle byte ASCII character. So U+0000 to U+007F (01111111)
+
+I thought that the prefix *"10"* would be used to indicate 2 byte long characters but this is actually reserved for intermediate bytes. This is to know when parsing a string whether you're at the start of a encoded character. So if a program begins to parse a character, and it notices it starts with *10*, then it knows it must move the cursor forward or backward to find a character beginning.
+
+So each byte class has a specific bit prefix to know how many bytes to check for it.
+
+Important points:
+- You CAN’T determine the length of the string by counting bytes.
+- You CAN’T randomly jump into the middle of the string and start reading.
+- You CAN’T get a substring by cutting at arbitrary byte offsets. You might cut off part of the character.
+
+Those who do will eventually meet this bad boy: � (U+FFFD)
+
+## Wouldn't UTF-32 be easier for everything?
+
+If every code point is always 4 bytes then *strlen(s) == sizeof(s) / 4, substring(0, 3) == bytes[0, 12], etc.*
+
+The problem is a single code point is not always a characters. Some have mutliple code points, known as *extended grapheme clusters* or *graphemes for short*
+
+- é is U+0065 + U+0301
+- 각 (Korean) is U+1100 U+1161 U+11A8
+- ☹️ is U+2639 + U+FE0F
+- 👨 is U+1F468 + U+200D + U+1F3ED
+- y̖̠͍̘͇͗̏̽̎͞ is U+0079 + U+0316 + U+0320 + U+034D + U+0318 + U+0347 + U+0357 + U+030F + U+033D + U+030E + U+035E
+
+There's no limit
+## What's  🤦🏼‍♂️.length()
+
+Different programming languages will give different answers. Python says 5, Javascript/Java/C# 7, Rust 17. It depends on the internal string representations (UTF-32, UTF-16, UTF-8) and report length in whatever units they store characters in (ints, shorts, bytes)
+
+You need to use a Unicode library in whatever language you're using to correctly know the length of the unicode string for the grapheme. 
+
+# Normalizing Unicode
+
+When comparing Unicode strings, a character can have multiple representations (like accented characters can be the sum of the accent and the ascii letter or them combined in a single unicode point). So when comparing strings you either need to decide whether to 
+
+NOTE: Unicode still depends on locale for rendering some characters (for instance Turkey has an i without a dot on top but Unicode still just has it as i so you need to specify the locale as metadata)
